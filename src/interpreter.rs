@@ -211,7 +211,87 @@ pub struct RunResults {
     pub used_input: usize,
 }
 
-pub fn run(mut code: Vec<isize>, input: Vec<isize>) -> Result<RunResults, Error> {
+fn add(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
+    let n1 = n1.value(&code);
+    let n2 = n2.value(&code);
+    let to = to.index().unwrap();
+    code[to] = n1 + n2;
+}
+
+fn multiply(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
+    let n1 = n1.value(&code);
+    let n2 = n2.value(&code);
+    let to = to.index().unwrap();
+    code[to] = n1 * n2;
+}
+
+fn jump_if_true(
+    code: &mut [isize],
+    i: &mut usize,
+    test: Parameter,
+    goto: Parameter,
+) -> Result<(), Error> {
+    let test = test.value(&code);
+    if test != 0 {
+        let goto = goto.value(&code);
+        let goto = goto
+            .try_into()
+            .map_err(|_| Error::NegativePositionalParameter {
+                value: goto,
+                parameter: 1,
+                opcode: 5,
+                position: *i,
+            })?;
+        *i = goto;
+    }
+    Ok(())
+}
+
+fn jump_if_false(
+    code: &mut [isize],
+    i: &mut usize,
+    test: Parameter,
+    goto: Parameter,
+) -> Result<(), Error> {
+    let test = test.value(&code);
+    if test == 0 {
+        let goto = goto.value(&code);
+        let goto = goto
+            .try_into()
+            .map_err(|_| Error::NegativePositionalParameter {
+                value: goto,
+                parameter: 1,
+                opcode: 5,
+                position: *i,
+            })?;
+        *i = goto;
+    }
+    Ok(())
+}
+
+fn less_than(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
+    let n1 = n1.value(&code);
+    let n2 = n2.value(&code);
+    let to = to.index().unwrap();
+    if n1 < n2 {
+        code[to] = 1;
+    } else {
+        code[to] = 0;
+    }
+}
+
+fn euqals(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
+    let n1 = n1.value(&code);
+    let n2 = n2.value(&code);
+    let to = to.index().unwrap();
+    if n1 == n2 {
+        code[to] = 1;
+    } else {
+        code[to] = 0;
+    }
+}
+
+pub fn eval(mut code: Vec<isize>, input: Vec<isize>) -> Result<RunResults, Error> {
     let mut output = Vec::new();
 
     let mut i = 0;
@@ -219,19 +299,8 @@ pub fn run(mut code: Vec<isize>, input: Vec<isize>) -> Result<RunResults, Error>
     loop {
         let instruction = Instruction::from_code(&code, &mut i)?;
         match instruction {
-            Instruction::Add { n1, n2, to } => {
-                let n1 = n1.value(&code);
-                let n2 = n2.value(&code);
-                let to = to.index().unwrap();
-                code[to] = n1 + n2;
-            }
-            Instruction::Multiply { n1, n2, to } => {
-                let n1 = n1.value(&code);
-                let n2 = n2.value(&code);
-                let to = to.index().unwrap();
-                code[to] = n1 * n2;
-            }
-            Instruction::Halt => break,
+            Instruction::Add { n1, n2, to } => add(&mut code, n1, n2, to),
+            Instruction::Multiply { n1, n2, to } => multiply(&mut code, n1, n2, to),
             Instruction::Input { to } => match input.get(j) {
                 None => break,
                 Some(i) => {
@@ -244,56 +313,13 @@ pub fn run(mut code: Vec<isize>, input: Vec<isize>) -> Result<RunResults, Error>
                 let from = from.value(&code);
                 output.push(from);
             }
-            Instruction::JumpIfTrue { test, goto } => {
-                let test = test.value(&code);
-                if test != 0 {
-                    let goto = goto.value(&code);
-                    let goto = goto
-                        .try_into()
-                        .map_err(|_| Error::NegativePositionalParameter {
-                            value: goto,
-                            parameter: 1,
-                            opcode: 5,
-                            position: i,
-                        })?;
-                    i = goto;
-                }
-            }
+            Instruction::JumpIfTrue { test, goto } => jump_if_true(&mut code, &mut i, test, goto)?,
             Instruction::JumpIfFalse { test, goto } => {
-                let test = test.value(&code);
-                if test == 0 {
-                    let goto = goto.value(&code);
-                    let goto = goto
-                        .try_into()
-                        .map_err(|_| Error::NegativePositionalParameter {
-                            value: goto,
-                            parameter: 1,
-                            opcode: 5,
-                            position: i,
-                        })?;
-                    i = goto;
-                }
+                jump_if_false(&mut code, &mut i, test, goto)?
             }
-            Instruction::LessThan { n1, n2, to } => {
-                let n1 = n1.value(&code);
-                let n2 = n2.value(&code);
-                let to = to.index().unwrap();
-                if n1 < n2 {
-                    code[to] = 1;
-                } else {
-                    code[to] = 0;
-                }
-            }
-            Instruction::Equals { n1, n2, to } => {
-                let n1 = n1.value(&code);
-                let n2 = n2.value(&code);
-                let to = to.index().unwrap();
-                if n1 == n2 {
-                    code[to] = 1;
-                } else {
-                    code[to] = 0;
-                }
-            }
+            Instruction::LessThan { n1, n2, to } => less_than(&mut code, n1, n2, to),
+            Instruction::Equals { n1, n2, to } => euqals(&mut code, n1, n2, to),
+            Instruction::Halt => break,
             Instruction::End => break,
         }
     }
