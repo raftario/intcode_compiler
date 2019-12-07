@@ -356,7 +356,7 @@ pub fn run(mut code: Vec<isize>) -> Result<(), Error> {
                 while input.is_none() {
                     buffer.clear();
 
-                    stdout.write(b"> ").expect("Can't write to stdout");
+                    stdout.write_all(b"> ").expect("Can't write to stdout");
                     stdout.flush().expect("Can't flush stdout");
                     stdin.read_line(&mut buffer).expect("Can't read from stdin");
 
@@ -368,7 +368,7 @@ pub fn run(mut code: Vec<isize>) -> Result<(), Error> {
                         }
                     }
 
-                    print!("\n");
+                    println!();
                 }
 
                 code[to] = input.unwrap();
