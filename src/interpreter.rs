@@ -52,13 +52,13 @@ impl Parameter {
     ) -> Result<Self, Error> {
         let p = Self::from_code(code, i, mode, n, opcode)?;
         match p {
-            Parameter::Position(_) => Err(Error::InvalidParameterMode {
+            Parameter::Position(_) => Ok(p),
+            Parameter::Immediate(_) => Err(Error::InvalidParameterMode {
                 mode,
                 parameter: n,
                 opcode,
                 position: *i,
             }),
-            Parameter::Immediate(_) => Ok(p),
         }
     }
 
@@ -75,6 +75,39 @@ impl Parameter {
             Parameter::Immediate(_) => None,
         }
     }
+
+    fn arithmetic(
+        code: &[isize],
+        i: &mut usize,
+        opcode: isize,
+        modes_and_opcode: isize,
+    ) -> Result<(Self, Self, Self), Error> {
+        let modes = (
+            modes_and_opcode / 100 % 10,
+            modes_and_opcode / 1000 % 10,
+            modes_and_opcode / 10000 % 10,
+        );
+
+        let n1 = Self::from_code(code, i, modes.0, 0, opcode)?;
+        let n2 = Self::from_code(code, i, modes.1, 1, opcode)?;
+        let to = Self::positional_from_code(code, i, modes.2, 2, opcode)?;
+
+        Ok((n1, n2, to))
+    }
+
+    fn jump(
+        code: &[isize],
+        i: &mut usize,
+        opcode: isize,
+        modes_and_opcode: isize,
+    ) -> Result<(Self, Self), Error> {
+        let modes = (modes_and_opcode / 100 % 10, modes_and_opcode / 1000 % 10);
+
+        let test = Self::from_code(code, i, modes.0, 0, opcode)?;
+        let goto = Self::from_code(code, i, modes.1, 1, opcode)?;
+
+        Ok((test, goto))
+    }
 }
 
 enum Instruction {
@@ -88,13 +121,31 @@ enum Instruction {
         n2: Parameter,
         to: Parameter,
     },
-    Halt,
     Input {
         to: Parameter,
     },
     Output {
         from: Parameter,
     },
+    JumpIfTrue {
+        test: Parameter,
+        goto: Parameter,
+    },
+    JumpIfFalse {
+        test: Parameter,
+        goto: Parameter,
+    },
+    LessThan {
+        n1: Parameter,
+        n2: Parameter,
+        to: Parameter,
+    },
+    Equals {
+        n1: Parameter,
+        n2: Parameter,
+        to: Parameter,
+    },
+    Halt,
     End,
 }
 
@@ -109,28 +160,13 @@ impl Instruction {
         };
 
         let opcode = modes_and_opcode % 100;
-
-        let mut parse_math_parameters = || {
-            let modes = (
-                modes_and_opcode / 100 % 10,
-                modes_and_opcode / 1000 % 10,
-                modes_and_opcode / 10000 % 10,
-            );
-
-            let n1 = Parameter::from_code(code, i, modes.0, 0, opcode)?;
-            let n2 = Parameter::from_code(code, i, modes.1, 1, opcode)?;
-            let to = Parameter::positional_from_code(code, i, modes.2, 2, opcode)?;
-
-            Ok((n1, n2, to))
-        };
-
         match opcode {
             1 => {
-                let (n1, n2, to) = parse_math_parameters()?;
+                let (n1, n2, to) = Parameter::arithmetic(code, i, opcode, modes_and_opcode)?;
                 Ok(Instruction::Add { n1, n2, to })
             }
             2 => {
-                let (n1, n2, to) = parse_math_parameters()?;
+                let (n1, n2, to) = Parameter::arithmetic(code, i, opcode, modes_and_opcode)?;
                 Ok(Instruction::Multiply { n1, n2, to })
             }
             3 => {
@@ -143,6 +179,22 @@ impl Instruction {
                 let from = Parameter::from_code(code, i, mode, 0, opcode)?;
                 Ok(Instruction::Output { from })
             }
+            5 => {
+                let (test, goto) = Parameter::jump(code, i, opcode, modes_and_opcode)?;
+                Ok(Instruction::JumpIfTrue { test, goto })
+            }
+            6 => {
+                let (test, goto) = Parameter::jump(code, i, opcode, modes_and_opcode)?;
+                Ok(Instruction::JumpIfFalse { test, goto })
+            }
+            7 => {
+                let (n1, n2, to) = Parameter::arithmetic(code, i, opcode, modes_and_opcode)?;
+                Ok(Instruction::LessThan { n1, n2, to })
+            }
+            8 => {
+                let (n1, n2, to) = Parameter::arithmetic(code, i, opcode, modes_and_opcode)?;
+                Ok(Instruction::Equals { n1, n2, to })
+            }
             99 => Ok(Instruction::Halt),
             _ => Err(Error::InvalidOpcode {
                 opcode,
@@ -152,6 +204,7 @@ impl Instruction {
     }
 }
 
+#[derive(Debug)]
 pub struct RunResults {
     pub output: Vec<isize>,
     pub run_code: usize,
@@ -169,24 +222,77 @@ pub fn run(mut code: Vec<isize>, input: Vec<isize>) -> Result<RunResults, Error>
             Instruction::Add { n1, n2, to } => {
                 let n1 = n1.value(&code);
                 let n2 = n2.value(&code);
-                code[to.index().unwrap()] = n1 + n2;
+                let to = to.index().unwrap();
+                code[to] = n1 + n2;
             }
             Instruction::Multiply { n1, n2, to } => {
                 let n1 = n1.value(&code);
                 let n2 = n2.value(&code);
-                code[to.index().unwrap()] = n1 * n2;
+                let to = to.index().unwrap();
+                code[to] = n1 * n2;
             }
             Instruction::Halt => break,
             Instruction::Input { to } => match input.get(j) {
                 None => break,
                 Some(i) => {
                     j += 1;
-                    code[to.index().unwrap()] = *i
+                    let to = to.index().unwrap();
+                    code[to] = *i
                 }
             },
             Instruction::Output { from } => {
                 let from = from.value(&code);
                 output.push(from);
+            }
+            Instruction::JumpIfTrue { test, goto } => {
+                let test = test.value(&code);
+                if test != 0 {
+                    let goto = goto.value(&code);
+                    let goto = goto
+                        .try_into()
+                        .map_err(|_| Error::NegativePositionalParameter {
+                            value: goto,
+                            parameter: 1,
+                            opcode: 5,
+                            position: i,
+                        })?;
+                    i = goto;
+                }
+            }
+            Instruction::JumpIfFalse { test, goto } => {
+                let test = test.value(&code);
+                if test == 0 {
+                    let goto = goto.value(&code);
+                    let goto = goto
+                        .try_into()
+                        .map_err(|_| Error::NegativePositionalParameter {
+                            value: goto,
+                            parameter: 1,
+                            opcode: 5,
+                            position: i,
+                        })?;
+                    i = goto;
+                }
+            }
+            Instruction::LessThan { n1, n2, to } => {
+                let n1 = n1.value(&code);
+                let n2 = n2.value(&code);
+                let to = to.index().unwrap();
+                if n1 < n2 {
+                    code[to] = 1;
+                } else {
+                    code[to] = 0;
+                }
+            }
+            Instruction::Equals { n1, n2, to } => {
+                let n1 = n1.value(&code);
+                let n2 = n2.value(&code);
+                let to = to.index().unwrap();
+                if n1 == n2 {
+                    code[to] = 1;
+                } else {
+                    code[to] = 0;
+                }
             }
             Instruction::End => break,
         }

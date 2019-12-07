@@ -5,10 +5,12 @@ pub fn parse(input: &str) -> Result<Vec<isize>, Error> {
         .split(',')
         .enumerate()
         .map(|(i, s)| {
-            s.parse().map_err(|_| Error::InvalidInput {
-                token: s.to_owned(),
-                position: i,
-            })
+            s.replace("\n", "")
+                .parse()
+                .map_err(|_| Error::InvalidInput {
+                    token: s.to_owned(),
+                    position: i,
+                })
         })
         .try_fold(Vec::new(), |mut acc, x| match x {
             Ok(x) => {
