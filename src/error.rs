@@ -14,6 +14,17 @@ pub enum Error {
         opcode: isize,
         position: usize,
     },
+    MissingParameter {
+        parameter: u8,
+        opcode: isize,
+        position: usize,
+    },
+    NegativePositionalParameter {
+        value: isize,
+        parameter: u8,
+        opcode: isize,
+        position: usize,
+    },
     InvalidParameterMode {
         mode: isize,
         parameter: u8,
@@ -31,6 +42,25 @@ impl Display for Error {
             Error::InvalidOpcode { opcode, position } => {
                 write!(f, "Invalid opcode \"{}\" at position {}", opcode, position)
             }
+            Error::MissingParameter {
+                parameter,
+                opcode,
+                position,
+            } => write!(
+                f,
+                "Missing parameter {} for opcode \"{}\" at position {}",
+                parameter, opcode, position
+            ),
+            Error::NegativePositionalParameter {
+                value,
+                parameter,
+                opcode,
+                position,
+            } => write!(
+                f,
+                "Negative value {} for positional parameter {} for opcode \"{}\" at position {}",
+                value, parameter, opcode, position
+            ),
             Error::InvalidParameterMode {
                 mode,
                 parameter,
