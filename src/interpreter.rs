@@ -1,6 +1,8 @@
 use crate::error::Error;
-use std::io::{BufRead, Write};
-use std::{convert::TryInto, io};
+use std::{
+    convert::TryInto,
+    io::{self, BufRead, Write},
+};
 
 enum Parameter {
     Position(usize),
@@ -205,13 +207,6 @@ impl Instruction {
     }
 }
 
-#[derive(Debug)]
-pub struct RunResults {
-    pub output: Vec<isize>,
-    pub run_code: usize,
-    pub used_input: usize,
-}
-
 fn add(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
     let n1 = n1.value(&code);
     let n2 = n2.value(&code);
@@ -292,7 +287,15 @@ fn equals(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
     }
 }
 
-pub fn eval(mut code: Vec<isize>, input: Vec<isize>) -> Result<RunResults, Error> {
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct EvalResults {
+    pub output: Vec<isize>,
+    pub run_code: usize,
+    pub used_input: usize,
+}
+
+pub fn eval(mut code: Vec<isize>, input: Vec<isize>) -> Result<EvalResults, Error> {
     let mut output = Vec::new();
 
     let mut i = 0;
@@ -325,7 +328,7 @@ pub fn eval(mut code: Vec<isize>, input: Vec<isize>) -> Result<RunResults, Error
         }
     }
 
-    Ok(RunResults {
+    Ok(EvalResults {
         output,
         run_code: i,
         used_input: j,
@@ -386,4 +389,41 @@ pub fn run(mut code: Vec<isize>) -> Result<(), Error> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::interpreter::eval;
+    use crate::{interpreter::EvalResults, parser};
+    use std::fs;
+
+    fn parse_code() -> Vec<isize> {
+        let contents = fs::read_to_string("resources/test/day5.intcode").unwrap();
+        let code = parser::parse(&contents).unwrap();
+        code
+    }
+
+    #[test]
+    fn day5_part1() {
+        let code = parse_code();
+        let expected = EvalResults {
+            output: vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 13818007],
+            run_code: 223,
+            used_input: 1,
+        };
+        let result = eval(code, vec![1]);
+        assert_eq!(expected, result.unwrap());
+    }
+
+    #[test]
+    fn day5_part2() {
+        let code = parse_code();
+        let expected = EvalResults {
+            output: vec![3176266],
+            run_code: 677,
+            used_input: 1,
+        };
+        let result = eval(code, vec![5]);
+        assert_eq!(expected, result.unwrap());
+    }
 }
