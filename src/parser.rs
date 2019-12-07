@@ -6,6 +6,7 @@ pub fn parse(input: &str) -> Result<Vec<isize>, Error> {
         .enumerate()
         .map(|(i, s)| {
             s.replace("\n", "")
+                .replace("\r", "")
                 .parse()
                 .map_err(|_| Error::InvalidInput {
                     token: s.to_owned(),

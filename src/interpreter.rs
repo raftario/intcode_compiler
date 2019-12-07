@@ -1,5 +1,6 @@
 use crate::error::Error;
-use std::convert::TryInto;
+use std::io::{BufRead, Write};
+use std::{convert::TryInto, io};
 
 enum Parameter {
     Position(usize),
@@ -280,7 +281,7 @@ fn less_than(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
     }
 }
 
-fn euqals(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
+fn equals(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
     let n1 = n1.value(&code);
     let n2 = n2.value(&code);
     let to = to.index().unwrap();
@@ -318,7 +319,7 @@ pub fn eval(mut code: Vec<isize>, input: Vec<isize>) -> Result<RunResults, Error
                 jump_if_false(&mut code, &mut i, test, goto)?
             }
             Instruction::LessThan { n1, n2, to } => less_than(&mut code, n1, n2, to),
-            Instruction::Equals { n1, n2, to } => euqals(&mut code, n1, n2, to),
+            Instruction::Equals { n1, n2, to } => equals(&mut code, n1, n2, to),
             Instruction::Halt => break,
             Instruction::End => break,
         }
@@ -329,4 +330,60 @@ pub fn eval(mut code: Vec<isize>, input: Vec<isize>) -> Result<RunResults, Error
         run_code: i,
         used_input: j,
     })
+}
+
+pub fn run(mut code: Vec<isize>) -> Result<(), Error> {
+    let stdout = io::stdout();
+    let mut stdout = stdout.lock();
+    let stdin = io::stdin();
+    let mut stdin = stdin.lock();
+
+    let mut i = 0;
+    loop {
+        let instruction = Instruction::from_code(&code, &mut i)?;
+        match instruction {
+            Instruction::Add { n1, n2, to } => add(&mut code, n1, n2, to),
+            Instruction::Multiply { n1, n2, to } => multiply(&mut code, n1, n2, to),
+            Instruction::Input { to } => {
+                let to = to.index().unwrap();
+
+                let mut input = None;
+                let mut buffer = String::new();
+
+                while input.is_none() {
+                    buffer.clear();
+
+                    stdout.write(b"> ").expect("Can't write to stdout");
+                    stdout.flush().expect("Can't flush stdout");
+                    stdin.read_line(&mut buffer).expect("Can't read from stdin");
+
+                    match buffer.replace("\n", "").replace("\r", "").parse() {
+                        Ok(i) => input = Some(i),
+                        Err(_) => {
+                            println!("Invalid");
+                            input = None
+                        }
+                    }
+
+                    print!("\n");
+                }
+
+                code[to] = input.unwrap();
+            }
+            Instruction::Output { from } => {
+                let from = from.value(&code);
+                println!("{}", from);
+            }
+            Instruction::JumpIfTrue { test, goto } => jump_if_true(&mut code, &mut i, test, goto)?,
+            Instruction::JumpIfFalse { test, goto } => {
+                jump_if_false(&mut code, &mut i, test, goto)?
+            }
+            Instruction::LessThan { n1, n2, to } => less_than(&mut code, n1, n2, to),
+            Instruction::Equals { n1, n2, to } => equals(&mut code, n1, n2, to),
+            Instruction::Halt => break,
+            Instruction::End => break,
+        }
+    }
+
+    Ok(())
 }
