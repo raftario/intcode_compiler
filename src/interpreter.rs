@@ -287,13 +287,12 @@ fn equals(code: &mut [i64], n1: Parameter, n2: Parameter, to: Parameter) {
     }
 }
 
-pub fn run(code: &mut [i64]) -> Result<(), Error> {
+pub fn run(code: &mut [i64], mut i: usize) -> Result<(), Error> {
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
     let stdin = io::stdin();
     let mut stdin = stdin.lock();
 
-    let mut i = 0;
     loop {
         let instruction = Instruction::from_code(&code, &mut i)?;
         match instruction {
@@ -362,7 +361,10 @@ pub fn eval(mut code: Vec<i64>, input: Vec<i64>) -> Result<EvalResults, Error> {
             Instruction::Add { n1, n2, to } => add(&mut code, n1, n2, to),
             Instruction::Multiply { n1, n2, to } => multiply(&mut code, n1, n2, to),
             Instruction::Input { to } => match input.get(j) {
-                None => break,
+                None => {
+                    i -= 2;
+                    break;
+                }
                 Some(i) => {
                     j += 1;
                     let to = to.index().unwrap();

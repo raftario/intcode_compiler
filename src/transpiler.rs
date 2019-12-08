@@ -19,7 +19,7 @@ fn transpile_code(code: &[i64]) -> String {
 }
 
 fn transpile_iterator(i: usize) -> String {
-    format!("let mut i: usize = {};", i)
+    format!("let i: usize = {};", i)
 }
 
 pub fn transpile(code: Vec<i64>, input: Vec<i64>) -> Result<String, Error> {
@@ -33,18 +33,18 @@ pub fn transpile(code: Vec<i64>, input: Vec<i64>) -> Result<String, Error> {
     }
 
     if eval_results.completed {
-        result = result
-            .replace("    // code\n", "")
-            .replace("    // iterator\n", "");
-        return Ok(result);
+        let mut result: Vec<&str> = result.split('\n').collect();
+        result.truncate(2);
+        result.push("}\n");
+        return Ok(result.join("\n"));
     }
 
     result = result
         .replace("// code", &transpile_code(&eval_results.code))
         .replace("// iterator", &transpile_iterator(eval_results.run_code));
 
-    let mut inter = INTERPRETER.split('\n').collect::<Vec<&str>>();
-    inter.truncate(343);
+    let mut inter: Vec<&str> = INTERPRETER.split('\n').collect();
+    inter.truncate(342);
     inter.remove(0);
     let mut err = ERROR.to_owned();
     err.push('\n');
@@ -77,7 +77,7 @@ mod tests {
     #[test]
     fn iterator() {
         let i = 0;
-        let expected = "let mut i: usize = 0;".to_owned();
+        let expected = "let i: usize = 0;".to_owned();
         assert_eq!(expected, transpile_iterator(i));
     }
 }

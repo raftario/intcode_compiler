@@ -3,7 +3,7 @@ fn main() {
     // code
     // iterator
 
-    let result = run(&mut code);
+    let result = run(&mut code, i);
     if let Err(e) = result {
         println!("{}", e);
     }
