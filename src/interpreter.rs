@@ -6,16 +6,16 @@ use std::{
 
 enum Parameter {
     Position(usize),
-    Immediate(isize),
+    Immediate(i64),
 }
 
 impl Parameter {
     fn from_code(
-        code: &[isize],
+        code: &[i64],
         i: &mut usize,
-        mode: isize,
+        mode: i64,
         n: u8,
-        opcode: isize,
+        opcode: i64,
     ) -> Result<Self, Error> {
         match code.get(*i) {
             None => Err(Error::MissingParameter {
@@ -47,11 +47,11 @@ impl Parameter {
     }
 
     fn positional_from_code(
-        code: &[isize],
+        code: &[i64],
         i: &mut usize,
-        mode: isize,
+        mode: i64,
         n: u8,
-        opcode: isize,
+        opcode: i64,
     ) -> Result<Self, Error> {
         let p = Self::from_code(code, i, mode, n, opcode)?;
         match p {
@@ -65,7 +65,7 @@ impl Parameter {
         }
     }
 
-    fn value(&self, code: &[isize]) -> isize {
+    fn value(&self, code: &[i64]) -> i64 {
         match self {
             Parameter::Position(p) => code[*p],
             Parameter::Immediate(v) => *v,
@@ -80,10 +80,10 @@ impl Parameter {
     }
 
     fn arithmetic(
-        code: &[isize],
+        code: &[i64],
         i: &mut usize,
-        opcode: isize,
-        modes_and_opcode: isize,
+        opcode: i64,
+        modes_and_opcode: i64,
     ) -> Result<(Self, Self, Self), Error> {
         let modes = (
             modes_and_opcode / 100 % 10,
@@ -99,10 +99,10 @@ impl Parameter {
     }
 
     fn jump(
-        code: &[isize],
+        code: &[i64],
         i: &mut usize,
-        opcode: isize,
-        modes_and_opcode: isize,
+        opcode: i64,
+        modes_and_opcode: i64,
     ) -> Result<(Self, Self), Error> {
         let modes = (modes_and_opcode / 100 % 10, modes_and_opcode / 1000 % 10);
 
@@ -153,7 +153,7 @@ enum Instruction {
 }
 
 impl Instruction {
-    fn from_code(code: &[isize], i: &mut usize) -> Result<Self, Error> {
+    fn from_code(code: &[i64], i: &mut usize) -> Result<Self, Error> {
         let modes_and_opcode = match code.get(*i) {
             None => return Ok(Instruction::End),
             Some(n) => {
@@ -207,14 +207,14 @@ impl Instruction {
     }
 }
 
-fn add(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
+fn add(code: &mut [i64], n1: Parameter, n2: Parameter, to: Parameter) {
     let n1 = n1.value(&code);
     let n2 = n2.value(&code);
     let to = to.index().unwrap();
     code[to] = n1 + n2;
 }
 
-fn multiply(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
+fn multiply(code: &mut [i64], n1: Parameter, n2: Parameter, to: Parameter) {
     let n1 = n1.value(&code);
     let n2 = n2.value(&code);
     let to = to.index().unwrap();
@@ -222,7 +222,7 @@ fn multiply(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
 }
 
 fn jump_if_true(
-    code: &mut [isize],
+    code: &mut [i64],
     i: &mut usize,
     test: Parameter,
     goto: Parameter,
@@ -244,7 +244,7 @@ fn jump_if_true(
 }
 
 fn jump_if_false(
-    code: &mut [isize],
+    code: &mut [i64],
     i: &mut usize,
     test: Parameter,
     goto: Parameter,
@@ -265,7 +265,7 @@ fn jump_if_false(
     Ok(())
 }
 
-fn less_than(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
+fn less_than(code: &mut [i64], n1: Parameter, n2: Parameter, to: Parameter) {
     let n1 = n1.value(&code);
     let n2 = n2.value(&code);
     let to = to.index().unwrap();
@@ -276,7 +276,7 @@ fn less_than(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
     }
 }
 
-fn equals(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
+fn equals(code: &mut [i64], n1: Parameter, n2: Parameter, to: Parameter) {
     let n1 = n1.value(&code);
     let n2 = n2.value(&code);
     let to = to.index().unwrap();
@@ -287,55 +287,7 @@ fn equals(code: &mut [isize], n1: Parameter, n2: Parameter, to: Parameter) {
     }
 }
 
-#[derive(Debug)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct EvalResults {
-    pub output: Vec<isize>,
-    pub run_code: usize,
-    pub used_input: usize,
-}
-
-pub fn eval(mut code: Vec<isize>, input: Vec<isize>) -> Result<EvalResults, Error> {
-    let mut output = Vec::new();
-
-    let mut i = 0;
-    let mut j = 0;
-    loop {
-        let instruction = Instruction::from_code(&code, &mut i)?;
-        match instruction {
-            Instruction::Add { n1, n2, to } => add(&mut code, n1, n2, to),
-            Instruction::Multiply { n1, n2, to } => multiply(&mut code, n1, n2, to),
-            Instruction::Input { to } => match input.get(j) {
-                None => break,
-                Some(i) => {
-                    j += 1;
-                    let to = to.index().unwrap();
-                    code[to] = *i
-                }
-            },
-            Instruction::Output { from } => {
-                let from = from.value(&code);
-                output.push(from);
-            }
-            Instruction::JumpIfTrue { test, goto } => jump_if_true(&mut code, &mut i, test, goto)?,
-            Instruction::JumpIfFalse { test, goto } => {
-                jump_if_false(&mut code, &mut i, test, goto)?
-            }
-            Instruction::LessThan { n1, n2, to } => less_than(&mut code, n1, n2, to),
-            Instruction::Equals { n1, n2, to } => equals(&mut code, n1, n2, to),
-            Instruction::Halt => break,
-            Instruction::End => break,
-        }
-    }
-
-    Ok(EvalResults {
-        output,
-        run_code: i,
-        used_input: j,
-    })
-}
-
-pub fn run(mut code: Vec<isize>) -> Result<(), Error> {
+pub fn run(code: &mut [i64]) -> Result<(), Error> {
     let stdout = io::stdout();
     let mut stdout = stdout.lock();
     let stdin = io::stdin();
@@ -345,8 +297,8 @@ pub fn run(mut code: Vec<isize>) -> Result<(), Error> {
     loop {
         let instruction = Instruction::from_code(&code, &mut i)?;
         match instruction {
-            Instruction::Add { n1, n2, to } => add(&mut code, n1, n2, to),
-            Instruction::Multiply { n1, n2, to } => multiply(&mut code, n1, n2, to),
+            Instruction::Add { n1, n2, to } => add(code, n1, n2, to),
+            Instruction::Multiply { n1, n2, to } => multiply(code, n1, n2, to),
             Instruction::Input { to } => {
                 let to = to.index().unwrap();
 
@@ -377,12 +329,10 @@ pub fn run(mut code: Vec<isize>) -> Result<(), Error> {
                 let from = from.value(&code);
                 println!("{}", from);
             }
-            Instruction::JumpIfTrue { test, goto } => jump_if_true(&mut code, &mut i, test, goto)?,
-            Instruction::JumpIfFalse { test, goto } => {
-                jump_if_false(&mut code, &mut i, test, goto)?
-            }
-            Instruction::LessThan { n1, n2, to } => less_than(&mut code, n1, n2, to),
-            Instruction::Equals { n1, n2, to } => equals(&mut code, n1, n2, to),
+            Instruction::JumpIfTrue { test, goto } => jump_if_true(code, &mut i, test, goto)?,
+            Instruction::JumpIfFalse { test, goto } => jump_if_false(code, &mut i, test, goto)?,
+            Instruction::LessThan { n1, n2, to } => less_than(code, n1, n2, to),
+            Instruction::Equals { n1, n2, to } => equals(code, n1, n2, to),
             Instruction::Halt => break,
             Instruction::End => break,
         }
@@ -391,13 +341,70 @@ pub fn run(mut code: Vec<isize>) -> Result<(), Error> {
     Ok(())
 }
 
+#[derive(Debug)]
+pub struct EvalResults {
+    pub code: Vec<i64>,
+    pub output: Vec<i64>,
+    pub completed: bool,
+    pub run_code: usize,
+    pub used_input: usize,
+}
+
+pub fn eval(mut code: Vec<i64>, input: Vec<i64>) -> Result<EvalResults, Error> {
+    let mut output = Vec::new();
+    let mut completed = false;
+
+    let mut i = 0;
+    let mut j = 0;
+    loop {
+        let instruction = Instruction::from_code(&code, &mut i)?;
+        match instruction {
+            Instruction::Add { n1, n2, to } => add(&mut code, n1, n2, to),
+            Instruction::Multiply { n1, n2, to } => multiply(&mut code, n1, n2, to),
+            Instruction::Input { to } => match input.get(j) {
+                None => break,
+                Some(i) => {
+                    j += 1;
+                    let to = to.index().unwrap();
+                    code[to] = *i
+                }
+            },
+            Instruction::Output { from } => {
+                let from = from.value(&code);
+                output.push(from);
+            }
+            Instruction::JumpIfTrue { test, goto } => jump_if_true(&mut code, &mut i, test, goto)?,
+            Instruction::JumpIfFalse { test, goto } => {
+                jump_if_false(&mut code, &mut i, test, goto)?
+            }
+            Instruction::LessThan { n1, n2, to } => less_than(&mut code, n1, n2, to),
+            Instruction::Equals { n1, n2, to } => equals(&mut code, n1, n2, to),
+            Instruction::Halt => {
+                completed = true;
+                break;
+            }
+            Instruction::End => {
+                completed = true;
+                break;
+            }
+        }
+    }
+
+    Ok(EvalResults {
+        code,
+        output,
+        completed,
+        run_code: i,
+        used_input: j,
+    })
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::interpreter::eval;
-    use crate::{interpreter::EvalResults, parser};
+    use crate::{interpreter::eval, parser};
     use std::fs;
 
-    fn parse_code() -> Vec<isize> {
+    fn parse_code() -> Vec<i64> {
         let contents = fs::read_to_string("resources/test/day5.intcode").unwrap();
         let code = parser::parse(&contents).unwrap();
         code
@@ -406,24 +413,16 @@ mod tests {
     #[test]
     fn day5_part1() {
         let code = parse_code();
-        let expected = EvalResults {
-            output: vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 13818007],
-            run_code: 223,
-            used_input: 1,
-        };
+        let expected = vec![0, 0, 0, 0, 0, 0, 0, 0, 0, 13818007];
         let result = eval(code, vec![1]);
-        assert_eq!(expected, result.unwrap());
+        assert_eq!(expected, result.unwrap().output);
     }
 
     #[test]
     fn day5_part2() {
         let code = parse_code();
-        let expected = EvalResults {
-            output: vec![3176266],
-            run_code: 677,
-            used_input: 1,
-        };
+        let expected = vec![3176266];
         let result = eval(code, vec![5]);
-        assert_eq!(expected, result.unwrap());
+        assert_eq!(expected, result.unwrap().output);
     }
 }

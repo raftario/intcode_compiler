@@ -11,24 +11,24 @@ pub enum Error {
         position: usize,
     },
     InvalidOpcode {
-        opcode: isize,
+        opcode: i64,
         position: usize,
     },
     MissingParameter {
         parameter: u8,
-        opcode: isize,
+        opcode: i64,
         position: usize,
     },
     NegativePositionalParameter {
-        value: isize,
+        value: i64,
         parameter: u8,
-        opcode: isize,
+        opcode: i64,
         position: usize,
     },
     InvalidParameterMode {
-        mode: isize,
+        mode: i64,
         parameter: u8,
-        opcode: isize,
+        opcode: i64,
         position: usize,
     },
 }

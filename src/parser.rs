@@ -1,6 +1,6 @@
 use crate::error::Error;
 
-pub fn parse(input: &str) -> Result<Vec<isize>, Error> {
+pub fn parse(input: &str) -> Result<Vec<i64>, Error> {
     input
         .split(',')
         .enumerate()
