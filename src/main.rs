@@ -18,7 +18,7 @@ fn read_to_string<P: AsRef<Path>>(path: P) -> String {
     })
 }
 
-/// AoC 2019 Intcode compiler and interpreter
+/// AoC 2019 Intcode compiler, interpreter and transpiler
 #[derive(StructOpt)]
 enum Opt {
     /// Interactively runs an Intcode program with the built-in interpreter
