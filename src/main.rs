@@ -34,7 +34,7 @@ enum Opt {
         file: PathBuf,
 
         /// Inputs to pass to the program, formatted the same way as Intcode
-        #[structopt(name = "INPUT")]
+        #[structopt(short, long, name = "INPUT")]
         input: Option<PathBuf>,
 
         /// File to write binary to
