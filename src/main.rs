@@ -18,6 +18,7 @@ fn read_to_string<P: AsRef<Path>>(path: P) -> String {
     })
 }
 
+/// AoC 2019 Intcode compiler and interpreter
 #[derive(StructOpt)]
 enum Opt {
     /// Interactively runs an Intcode program with the built-in interpreter
@@ -37,7 +38,7 @@ enum Opt {
         #[structopt(short, long, name = "INPUT")]
         input: Option<PathBuf>,
 
-        /// File to write binary to
+        /// File to write the binary to
         #[structopt(short, long, name = "OUTPUT")]
         output: Option<PathBuf>,
 

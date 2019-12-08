@@ -3,6 +3,22 @@ name = "intcode_compiler"
 version = "0.1.0"
 authors = ["Raphaël Thériault <raphael_theriault@outlook.com>"]
 edition = "2018"
+license = "Apache-2.0 WITH LLVM-exception"
+description = "AoC 2019 Intcode compiler and interpreter"
+homepage = "https://github.com/raftario/intcode_compiler"
+repository = "https://github.com/raftario/intcode_compiler"
+readme = "README.md"
+keywords = [
+    "intcode",
+    "compiler",
+    "interpreter",
+    "aoc",
+    "aoc2019",
+]
+categories = [
+    "command-line-utilities",
+    "parser-implementations",
+]
 
 [[bin]]
 path = "src/main.rs"
