@@ -15,7 +15,7 @@ fn transpile_output(output: &[i64]) -> String {
 
 fn transpile_code(code: &[i64]) -> String {
     let len = code.len();
-    format!("let mut code: [i64; {}] = {:?}", len, code)
+    format!("let mut code: [i64; {}] = {:?};", len, code)
 }
 
 fn transpile_iterator(i: usize) -> String {
@@ -54,4 +54,30 @@ pub fn transpile(code: Vec<i64>, input: Vec<i64>) -> Result<String, Error> {
     result = err;
 
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::transpiler::{transpile_code, transpile_iterator, transpile_output};
+
+    #[test]
+    fn output() {
+        let output = vec![1, 2, 3];
+        let expected = "println!(\"1\\n2\\n3\");".to_owned();
+        assert_eq!(expected, transpile_output(&output));
+    }
+
+    #[test]
+    fn code() {
+        let code = vec![1, 2, 3];
+        let expected = "let mut code: [i64; 3] = [1, 2, 3];".to_owned();
+        assert_eq!(expected, transpile_code(&code));
+    }
+
+    #[test]
+    fn iterator() {
+        let i = 0;
+        let expected = "let mut i: usize = 0;".to_owned();
+        assert_eq!(expected, transpile_iterator(i));
+    }
 }
