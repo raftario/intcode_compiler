@@ -15,3 +15,7 @@ $ cargo install intcode_compiler
 ```sh
 $ ic --help
 ```
+
+## License
+
+[Apache 2.0](LICENSE)
