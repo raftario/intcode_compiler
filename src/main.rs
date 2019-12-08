@@ -93,7 +93,7 @@ impl Opt {
                     })
                 });
                 let optimisation_level = match optimisation_level {
-                    None => '2',
+                    None => 'z',
                     Some(l) => match l {
                         '0'..='3' | 's' | 'z' => optimisation_level.unwrap(),
                         _ => {
